@@ -6,6 +6,11 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <string.h>
+#ifdef BTL_USE_IO
+#include <stdio.h>
+#endif
+
 typedef size_t T;
 
 
@@ -17,10 +22,6 @@ typedef struct {
     size_t tail;
     size_t size;
 } Queue;
-
-typedef struct {
-    
-} thing;
 
 Queue *queue_init(size_t size);
 void queue_free(Queue *queue, bool free_elements);
@@ -36,15 +37,44 @@ T dequeue_peeklast(Queue *queue);
 
 
 // Priority Queue
-typedef struct Node {
+typedef struct pqueue_Node {
     T priority;
     T value;
-    struct Node *left;
-    struct Node *right;
-} Node;
 
-void pqueue_push(Node *pqueue, T value, T priority);
-uint64_t pqueue_pop();
+    struct pqueue_Node *parent;
+    struct pqueue_Node *children;
+    struct pqueue_Node *next;
+    struct pqueue_Node *prev;
+
+    uint8_t degree;
+    uint8_t time;
+} pqueue_Node;
+
+typedef struct {
+    bool (*higher)(T, T);
+    pqueue_Node *min;
+    pqueue_Node *degrees[64];
+} PQueue;
+
+static void __btl_pqNode_insert(pqueue_Node *llist_node, pqueue_Node *start, pqueue_Node *end);
+static void __btl_pqNode_remove(pqueue_Node *start, bool _free);
+static void __btl_pqNode_replace(pqueue_Node *llist_node, pqueue_Node *start, pqueue_Node *end);
+static pqueue_Node *__btl_pqNode_combine(bool (*higher)(T, T), pqueue_Node *node1, pqueue_Node *node2);
+
+void __btl_output_heap(pqueue_Node *root);
+
+static void __btl_pqueue_cut(PQueue *pqueue, pqueue_Node *node);
+static void __btl_pqueue_collect(PQueue *pqueue);
+
+PQueue *pqueue_init(bool (*higher)(T, T));
+void pqueue_free(PQueue *pqueue);
+void pqueue_push(PQueue *pqueue, T value, T priority);
+pqueue_Node *pqueue_push_get(PQueue *pqueue, T value, T priority);
+void pqueue_pop(PQueue *pqueue);
+T pqueue_peek(PQueue *pqueue);
+T pqueue_peek_priority(PQueue *pqueue);
+bool pqueue_is_empty(PQueue *pqueue);
+void pqueue_deckey(PQueue *pqueue, pqueue_Node *node, T new_priority);
 
 
 #ifdef IMPLEMENT_DEQUEUE
@@ -130,9 +160,240 @@ T dequeue_peeklast(Queue *queue) {
 
 #endif
 
-#ifdef IMPLEMENT_PRIORITY_QUEUE
+#ifdef IMPLEMENT_PQUEUE
 
+static void __btl_pqNode_insert(pqueue_Node *llist_node, pqueue_Node *start, pqueue_Node *end) {
+    end->next = llist_node->next;
+    llist_node->next->prev = end;
+    start->prev = llist_node;
+    llist_node->next = start;
+}
 
+static void __btl_pqNode_remove(pqueue_Node *llist_node, bool _free) {
+    assert(llist_node->next != llist_node && "Can not delete last node in linked list!");
+    llist_node->prev->next = llist_node->next;
+    llist_node->next->prev = llist_node->prev;
+    if (_free)
+        free(llist_node);
+}
+
+static void __btl_pqNode_replace(pqueue_Node *llist_node, pqueue_Node *start, pqueue_Node *end) {
+    assert(llist_node->next != llist_node && "Can not replace last node in linked list!");
+    end->next = llist_node->next;
+    llist_node->next->prev = end;
+    start->prev = llist_node->prev;
+    llist_node->prev->next = start;
+    free(llist_node);
+}
+
+static pqueue_Node *__btl_pqNode_combine(bool (*higher)(T, T), pqueue_Node *node1, pqueue_Node *node2) {
+    if (higher(node2->priority, node1->priority)) {
+        node1 = (pqueue_Node *)((uintptr_t)node1 ^ (uintptr_t)node2);
+        node2 = (pqueue_Node *)((uintptr_t)node1 ^ (uintptr_t)node2);
+        node1 = (pqueue_Node *)((uintptr_t)node1 ^ (uintptr_t)node2);
+    }
+
+    ++node1->degree;
+    node2->parent = node1;
+    node2->time = 0;
+    __btl_pqNode_remove(node2, false);
+    if (node1->children == NULL) {
+        node1->children = node2;
+        node2->prev = node2->next = node2;
+    } else {
+        __btl_pqNode_insert(node1->children, node2, node2);
+    }
+
+    return node1;
+}
+
+#ifdef BTL_USE_IO
+void __btl_output_heap(pqueue_Node *root) {
+    pqueue_Node *dummy = root;
+    while (true) {
+        printf("%lld", dummy->priority);
+        if (dummy->children != NULL) {
+            printf("(");
+            __btl_output_heap(dummy->children);
+            printf(")");
+        }
+        
+        dummy = dummy->next;
+        if (dummy == root)
+            break;
+        printf(" ");
+    }
+}
+#endif
+
+static void __btl_pqueue_cut(PQueue *pqueue, pqueue_Node *node) {
+   assert(node->parent != NULL && "Can not cut root node!");
+    node->time = 1;
+    pqueue_Node *parent = node->parent;
+
+    if (node->next == node) {
+        parent->children = NULL;
+    } else {
+        if (parent->children == node) {
+            parent->children = node->next;
+        }
+        __btl_pqNode_remove(node, false);
+    }
+    
+    __btl_pqNode_insert(pqueue->min, node, node);
+
+    if (!parent->time) {
+        parent->time = 2;
+    } else if (parent->time == 2) {
+        __btl_pqueue_cut(pqueue, parent);
+    }
+}
+
+static void __btl_pqueue_collect(PQueue *pqueue) {
+    memset(pqueue->degrees, (size_t)NULL, 64);
+    pqueue_Node *root = pqueue->min;
+    pqueue_Node *temp;
+    pqueue_Node *entry;
+    pqueue_Node *nroot = NULL;
+
+    while (true) {
+        temp = root;
+        root = root->next;
+        if ((pqueue->degrees[temp->degree]) == temp)
+            break;
+
+        while ((entry = pqueue->degrees[temp->degree]) != NULL) {
+            if (entry == pqueue->min)
+                nroot = entry->next;
+            pqueue->degrees[temp->degree] = NULL;
+            temp = __btl_pqNode_combine(pqueue->higher, temp, entry);
+            if (nroot != NULL && temp != entry) {
+                pqueue->min = nroot;
+                nroot = NULL;
+            }
+        }
+        pqueue->degrees[temp->degree] = temp;
+    }
+}
+
+PQueue *pqueue_init(bool (*higher)(T, T)) {
+    PQueue *pqueue = (PQueue *)malloc(sizeof(PQueue));
+    pqueue->higher = higher;
+    pqueue->min = NULL;
+
+    return pqueue;
+}
+
+void pqueue_free(PQueue *pqueue) {
+    while(!pqueue_is_empty(pqueue))
+        pqueue_pop(pqueue);
+    free(pqueue);
+}
+
+void pqueue_push(PQueue *pqueue, T priority, T value) {
+    pqueue_Node *temp = (pqueue_Node *)malloc(sizeof(pqueue_Node));
+    temp->priority = priority;
+    temp->value = value;
+    temp->children = NULL;
+    temp->parent = NULL;
+    temp->degree = 0;
+    temp->time = 1;
+    if (pqueue->min == NULL) {
+        temp->next = temp->prev = temp;
+        pqueue->min = temp;
+    } else {
+        __btl_pqNode_insert(pqueue->min, temp, temp);
+        if (pqueue->higher(temp->priority, pqueue->min->priority))
+            pqueue->min = temp;
+    }
+}
+
+pqueue_Node *pqueue_push_get(PQueue *pqueue, T priority, T value) {
+    pqueue_Node *temp = (pqueue_Node *)malloc(sizeof(pqueue_Node));
+    temp->priority = priority;
+    temp->value = value;
+    temp->children = NULL;
+    temp->parent = NULL;
+    temp->degree = 0;
+    temp->time = 1;
+    if (pqueue->min == NULL) {
+        temp->next = temp->prev = temp;
+        pqueue->min = temp;
+    } else {
+        __btl_pqNode_insert(pqueue->min, temp, temp);
+        if (pqueue->higher(temp->priority, pqueue->min->priority))
+            pqueue->min = temp;
+    }
+
+    return temp;
+}
+
+void pqueue_pop(PQueue *pqueue) {
+    assert(pqueue->min != NULL && "Can not pop from empty pqueue!");
+    pqueue_Node *min_root = pqueue->min;
+    pqueue_Node *node = min_root->children;
+
+    if (node == NULL) {
+        if (min_root->next == min_root) {
+            pqueue->min = NULL;
+        } else {
+            pqueue->min = min_root->next;
+            __btl_pqNode_remove(min_root, true);
+        }
+    } else {
+        for (size_t i = 0; i < min_root->degree; ++i) {
+            node->parent = NULL;
+            node->time = 1;
+            node = node->next;
+        }
+
+        if (min_root->next == min_root) {
+            pqueue->min = node;
+        } else {
+            pqueue->min = min_root->next;
+            __btl_pqNode_replace(min_root, node, node->prev);
+        }
+    }
+    
+    if (pqueue->min != NULL) {
+        __btl_pqueue_collect(pqueue);
+        min_root = pqueue->min;
+        node = min_root->next;
+        while (true) {
+            if (pqueue->higher(node->priority, pqueue->min->priority))
+                pqueue->min = node;
+            
+            node = node->next;
+            if (node == min_root)
+                break;
+        }
+    }
+}
+
+T pqueue_peek(PQueue *pqueue) {
+    assert(pqueue->min != NULL && "Can not peek empty pqueue!");
+    return pqueue->min->value;
+}
+
+T pqueue_peek_priority(PQueue *pqueue) {
+    assert(pqueue->min != NULL && "Can not peek empty pqueue!");
+    return pqueue->min->priority;
+}
+
+bool pqueue_is_empty(PQueue *pqueue) {
+    return pqueue->min == NULL;
+}
+
+void pqueue_deckey(PQueue *pqueue, pqueue_Node *node, T new_priority) {
+    node->priority = new_priority;
+    if (node->parent != NULL && pqueue->higher(new_priority, node->parent->priority)) {
+        __btl_pqueue_cut(pqueue, node);
+    }
+
+    if (pqueue->higher(new_priority, pqueue->min->priority)) {
+        pqueue->min = node;
+    }
+}
 
 #endif
 
