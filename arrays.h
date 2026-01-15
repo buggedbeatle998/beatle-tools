@@ -10,7 +10,7 @@ typedef size_t T;
 
 
 // Bitstring
-typedef struct bitstring {
+typedef struct {
     uint64_t *bits;
     size_t size;
 } bitstring;
@@ -19,6 +19,23 @@ bitstring bitstring_init(size_t);
 void bitstring_free(bitstring);
 bool bitstring_get(bitstring, size_t);
 void bitstring_set(bitstring, size_t, bool);
+
+
+// Dynamic Array
+typedef struct {
+    T *array;
+    size_t size;
+    size_t capacity;
+} Dynarr;
+
+Dynarr *dynarr_init(size_t min_capacity);
+void dynarr_free(Dynarr *dynarr);
+void dynarr_push(Dynarr *dynarr, T value);
+void dynarr_pop(Dynarr *dynarr);
+T dynarr_peek(Dynarr *dynarr);
+T dynarr_index_get(Dynarr *dynarr, size_t i);
+T dynarr_index_set(Dynarr *dynarr, size_t i, T value);
+bool dynarr_is_empty(Dynarr *dynarr);
 
 
 // XORLL
@@ -53,7 +70,7 @@ bool XORLLiter_next(XORLL_Iter *iter);
 bool XORLLiter_prev(XORLL_Iter *iter);
 void XORLLiter_insertprev(XORLL_Iter *iter, T value);
 void XORLLiter_removecurr(XORLL_Iter *iter);
-T XORLiterL_peekcurr(XORLL_Iter *iter);
+T XORLLiter_peekcurr(XORLL_Iter *iter);
 
 
 #ifdef IMPLEMENT_BITSTRING
@@ -92,6 +109,66 @@ void bitstring_set(bitstring bits, size_t pos, uint8_t val) {
     } else {
         bits.bits[off] &= (~((uint64_t)1 << (pos % 64)));
     }
+}
+
+#endif
+
+#ifdef IMPLEMENT_DYNARRAY
+
+Dynarr *dynarr_init(size_t min_capacity) {
+    Dynarr *dynarr = (Dynarr *)malloc(sizeof(Dynarr));
+    
+    --min_capacity;
+    min_capacity |= min_capacity >> 1;
+    min_capacity |= min_capacity >> 2;
+    min_capacity |= min_capacity >> 4;
+    min_capacity |= min_capacity >> 8;
+    min_capacity |= min_capacity >> 16;
+    min_capacity |= min_capacity >> 32;
+    ++min_capacity;
+    dynarr->capacity = min_capacity;
+    dynarr->array = malloc(sizeof(T) * min_capacity);
+    
+    dynarr->size = 0;
+
+    return dynarr;
+}
+
+void dynarr_free(Dynarr *dynarr) {
+    free(dynarr->array);
+    free(dynarr);
+}
+
+void dynarr_push(Dynarr *dynarr, T value) {
+    if (dynarr->size >= dynarr->capacity) {
+        dynarr->capacity <<= 1;
+        dynarr->array = realloc(dynarr->array, sizeof(T) * dynarr->capacity);
+    }
+    dynarr->array[dynarr->size++] = value;
+}
+
+void dynarr_pop(Dynarr *dynarr) {
+    assert(dynarr->size > 0 && "Can not pop from empty array!");
+    --dynarr->size;
+}
+
+T dynarr_peek(Dynarr *dynarr) {
+    assert(dynarr->size > 0 && "Can not peek empty array!");
+    return dynarr->array[dynarr->size - 1];
+}
+
+T dynarr_index_get(Dynarr *dynarr, size_t i) {
+    assert(i < dynarr->size && "Index out of range!");
+    return dynarr->array[i];
+}
+
+T dynarr_index_set(Dynarr *dynarr, size_t i, T value) {
+    assert(i < dynarr->size && "Index out of range!");
+    return dynarr->array[i] = value;
+}
+
+bool dynarr_is_empty(Dynarr *dynarr) {
+    return dynarr->size == 0;
 }
 
 #endif
@@ -231,7 +308,7 @@ void XORLLiter_removecurr(XORLL_Iter *iter) {
     free((__btl_XORLL_Node *)temp);
 }
 
-T XORLiterL_peekcurr(XORLL_Iter *iter) {
+T XORLLiter_peekcurr(XORLL_Iter *iter) {
     return ((__btl_XORLL_Node *)iter->curr)->value;
 }
 
