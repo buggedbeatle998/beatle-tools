@@ -85,7 +85,7 @@ HLOCAL void       *xorlliter_peekcurr      (const XORLLIter *iter);
     bitstring bitstring_init(size_t size) {
         bitstring bits;
     
-        bits.bits = (uint64_t *)calloc(size, sizeof(uint64_t));
+        bits.bits = calloc(size, sizeof(uint64_t));
         bits.size = size;
     
         return bits;
@@ -107,14 +107,14 @@ HLOCAL void       *xorlliter_peekcurr      (const XORLLIter *iter);
         size_t off = index / 64;
     
         if (off + 1 > bits.size) {
-            bits.bits = (uint64_t *)realloc(bits.bits, sizeof(uint64_t) * (off + 1));
+            bits.bits = realloc(bits.bits, sizeof(uint64_t) * (off + 1));
             bits.size = off + 1;
         }
     
         if (value) {
-            bits.bits[off] |= ((uint64_t)1 << (index % 64));
+            bits.bits[off] |= (1UL << (index % 64));
         } else {
-            bits.bits[off] &= (~((uint64_t)1 << (index % 64)));
+            bits.bits[off] &= (~(1UL << (index % 64)));
         }
     }
 // end
@@ -123,7 +123,7 @@ HLOCAL void       *xorlliter_peekcurr      (const XORLLIter *iter);
 #ifdef IMPLEMENT_DYNARR
 // start    
     HLOCAL Dynarr *dynarr_init(size_t min_capacity, size_t ele_size) {
-        Dynarr *dynarr = (Dynarr *)malloc(sizeof(Dynarr));
+        Dynarr *dynarr = malloc(sizeof(Dynarr));
         
         --min_capacity;
         min_capacity |= min_capacity >> 1;
@@ -190,7 +190,7 @@ HLOCAL void       *xorlliter_peekcurr      (const XORLLIter *iter);
     typedef struct { \
         Dynarr *dynarr; \
     } handle; \
-    static inline handle handle##_init     (size_t capacity) {return (handle){dynarr_init(sizeof(type), capacity)};} \
+    static inline handle handle##_init     (size_t capacity) {return (handle){dynarr_init(capacity, sizeof(type))};} \
     static inline void   handle##_free     (handle dynarr) {dynarr_free(dynarr.dynarr);} \
     static inline void   handle##_push     (handle dynarr, type value) {dynarr_push(dynarr.dynarr, &value);} \
     static inline void   handle##_pop      (handle dynarr) {dynarr_pop(dynarr.dynarr);} \
