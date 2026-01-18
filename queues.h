@@ -161,7 +161,7 @@ HLOCAL void         pqueue_deckey        (      PQueue *pqueue, pqueue_Node *nod
     static inline type   handle##_peek     (handle queue) {return *(type *)queue_peek(queue.queue);} \
     static inline type   handle##_peekpop  (handle queue) {return *(type *)queue_peekpop(queue.queue);} \
     static inline void   handle##_clear    (handle queue) {queue_clear(queue.queue);} \
-    static inline bool   handle##_is_empty (handle queue) {return queue_is_empty(queue.queue);} \
+    static inline bool   handle##_is_empty (handle queue) {return queue_is_empty(queue.queue);}
 // end
 #endif
 
@@ -210,7 +210,7 @@ HLOCAL void         pqueue_deckey        (      PQueue *pqueue, pqueue_Node *nod
     static inline void   handle##_pushfirst   (handle queue, type value) {dequeue_pushfirst(queue.queue, &value);} \
     static inline void   handle##_poplast     (handle queue) {dequeue_poplast(queue.queue);} \
     static inline type   handle##_peeklast    (handle queue) {return *(type *)dequeue_peeklast(queue.queue);} \
-    static inline type   handle##_peekpoplast (handle queue) {return *(type *)dequeue_peekpoplast(queue.queue);} \
+    static inline type   handle##_peekpoplast (handle queue) {return *(type *)dequeue_peekpoplast(queue.queue);}
 // end
 #endif
 
@@ -459,8 +459,7 @@ HLOCAL void         pqueue_deckey        (      PQueue *pqueue, pqueue_Node *nod
     static inline elet         handle##_peek          (handle pqueue) {return *(elet *)pqueue_peek(pqueue.pqueue);} \
     static inline keyt         handle##_peek_priority (handle pqueue) {return *(keyt *)pqueue_peek_priority(pqueue.pqueue);} \
     static inline bool         handle##_is_empty      (handle pqueue) {return pqueue_is_empty(pqueue.pqueue);} \
-    static inline void         handle##_deckey        (handle pqueue, pqueue_Node *node, keyt new_priority) {pqueue_deckey(pqueue.pqueue, node, &new_priority);} \
-
+    static inline void         handle##_deckey        (handle pqueue, pqueue_Node *node, keyt new_priority) {pqueue_deckey(pqueue.pqueue, node, &new_priority);}
 // end
 #endif
 

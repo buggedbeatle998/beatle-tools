@@ -198,7 +198,7 @@ HLOCAL void       *xorlliter_peekcurr      (const XORLLIter *iter);
     static inline type   handle##_peekpop  (handle dynarr) {return *(type *)dynarr_peekpop(dynarr.dynarr);} \
     static inline type   handle##_iget     (handle dynarr, size_t i) {return *(type *)dynarr_iget(dynarr.dynarr, i);} \
     static inline void   handle##_iset     (handle dynarr, size_t i, type value) {dynarr_iset(dynarr.dynarr, i, &value);} \
-    static inline bool   handle##_is_empty (handle dynarr) {return dynarr_is_empty(dynarr.dynarr);} \
+    static inline bool   handle##_is_empty (handle dynarr) {return dynarr_is_empty(dynarr.dynarr);}
 //begin
 #endif
 
@@ -383,7 +383,7 @@ HLOCAL void       *xorlliter_peekcurr      (const XORLLIter *iter);
     static inline bool         handle##iter##_prev       (handle##iter iter) {return xorlliter_prev(iter.iter);} \
     static inline void         handle##iter##_insertprev (handle##iter iter, type value) {xorlliter_insertprev(iter.iter, &value);} \
     static inline void         handle##iter##_removecurr (handle##iter iter) {xorlliter_removecurr(iter.iter);} \
-    static inline type         handle##iter##_peekcurr   (handle##iter iter) {return *(type *)xorlliter_peekcurr(iter.iter);} \
+    static inline type         handle##iter##_peekcurr   (handle##iter iter) {return *(type *)xorlliter_peekcurr(iter.iter);}
 // end
 #endif
 

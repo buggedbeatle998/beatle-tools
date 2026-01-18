@@ -89,7 +89,7 @@ HLOCAL bool stack_is_empty(Stack *stack);
     static inline type   handle##_peek     (handle stack) {return *(type *)stack_peek(stack.stack);} \
     static inline type   handle##_peekpop  (handle stack) {return *(type *)stack_peekpop(stack.stack);} \
     static inline void   handle##_clear    (handle stack) {stack_clear(stack.stack);} \
-    static inline bool   handle##_is_empty (handle stack) {return stack_is_empty(stack.stack);} \
+    static inline bool   handle##_is_empty (handle stack) {return stack_is_empty(stack.stack);}
 // end
 #endif
 

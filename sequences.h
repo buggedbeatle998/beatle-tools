@@ -19,46 +19,46 @@ uint64_t fib(uint32_t n);
 
 
 #ifdef IMPLEMENT_FIB
-
-static uint32_t log2_32(uint32_t value) {
-    value |= value >> 1;
-    value |= value >> 2;
-    value |= value >> 4;
-    value |= value >> 8;
-    value |= value >> 16;
-    return tab32[(uint32_t)(value * 0x07C4ACDD) >> 27];
-}
-
-uint64_t fib(uint32_t n) {
-    if (n > 1) {
-        uint64_t m0 = 0;
-        uint64_t m1 = 1;
-        uint64_t t0;
-        uint32_t i = log2_32(n);
-        bool is_neg = true;
-
-        while (i--) {
-            t0 = m0 * m0;
-            m0 = m1 * m1;
-            m1 = m0 << 2;
-            m1 -= t0;
-            if (is_neg)
-                m1 -= 2;
-            else
-                m1 += 2;
-            m0 += t0;
-
-            if ((is_neg = n & (1 << i)))
-                m0 = m1 - m0;
-            else
-                m1 -= m0;
-        }
-        return m1;
-    } else {
-        return n;
+// start
+    static uint32_t log2_32(uint32_t value) {
+        value |= value >> 1;
+        value |= value >> 2;
+        value |= value >> 4;
+        value |= value >> 8;
+        value |= value >> 16;
+        return tab32[(uint32_t)(value * 0x07C4ACDD) >> 27];
     }
-}
-
+    
+    uint64_t fib(uint32_t n) {
+        if (n > 1) {
+            uint64_t m0 = 0;
+            uint64_t m1 = 1;
+            uint64_t t0;
+            uint32_t i = log2_32(n);
+            bool is_neg = true;
+    
+            while (i--) {
+                t0 = m0 * m0;
+                m0 = m1 * m1;
+                m1 = m0 << 2;
+                m1 -= t0;
+                if (is_neg)
+                    m1 -= 2;
+                else
+                    m1 += 2;
+                m0 += t0;
+    
+                if ((is_neg = n & (1 << i)))
+                    m0 = m1 - m0;
+                else
+                    m1 -= m0;
+            }
+            return m1;
+        } else {
+            return n;
+        }
+    }
+// end
 #endif
 
 
